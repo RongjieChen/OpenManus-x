@@ -1,7 +1,7 @@
 import uvicorn
 import json
 from typing import Dict, Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -11,7 +11,7 @@ from app.schema import AgentState
 
 app = FastAPI(
     title="OpenManus-x FastAPI",
-    description="OpenManus-x FastAPI服务",
+    description="OpenManus-x FastAPI",
     version="1.0.0",
 )
 
@@ -66,50 +66,17 @@ class WebSocketManager:
 
 manager = WebSocketManager()
 
-@app.post("/api/chat", response_model=ResponseMsg)
-async def chat(request_msg: RequestMsg):
-    agent = Manus()
-    try:
-        result = await agent.run(request_msg.content)
-        return ResponseMsg(role="assistant", content=result)
-    except Exception as e:
-        logger.error(f"Error during chat: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"message": f"Error during chat: {e}"},
-        )
-
-async def run_agent_with_reasoning(agent: Manus, content: str) -> str:
-    original_step_method = agent.step
-    reasoning_steps = []
-
-    async def step_with_capture() -> str:
-        step_result = await original_step_method()
-        reasoning_steps.append(f"步骤 {agent.current_step}: {step_result}")
-        return step_result
-
-    agent.step = step_with_capture
-
-    try:
-        result = await agent.run(content)
-
-        reasoning = "\n".join(reasoning_steps)
-        final_result = f"[推理过程:开始]\n{reasoning}\n[推理过程:结束]\n\n{result}"
-        return final_result
-    finally:
-        agent.step = original_step_method
-
 async def run_agent_with_reasoning_stream(agent: Manus, content: str, websocket: WebSocket) -> str:
     original_step_method = agent.step
 
     await websocket.send_json({
         "type": "reasoning_start",
-        "content": "推理开始..."
+        "content": "Reasoning started..."
     })
 
     async def step_with_stream() -> str:
         step_result = await original_step_method()
-        step_message = f"步骤 {agent.current_step}: {step_result}"
+        step_message = f"step {agent.current_step}: {step_result}"
         await websocket.send_json({
             "type": "reasoning_step",
             "content": step_message
@@ -123,7 +90,7 @@ async def run_agent_with_reasoning_stream(agent: Manus, content: str, websocket:
 
         await websocket.send_json({
             "type": "reasoning_end",
-            "content": "推理完成"
+            "content": "Reasoning completed"
         })
 
         return result
@@ -133,12 +100,12 @@ async def run_agent_with_reasoning_stream(agent: Manus, content: str, websocket:
 @app.websocket("/ws/chat/{client_id}")
 async def websocket(websocket: WebSocket, client_id: str):
     await websocket.accept()
-    logger.info(f"WebSocket已连接: {client_id}")
+    logger.info(f"WebSocket connected: {client_id}")
 
     agent = manager.get_agent(client_id)
     if agent is None:
-        logger.error(f"无法创建代理实例: {client_id}")
-        await websocket.send_text("无法创建代理实例")
+        logger.error(f"Failed to create agent instance: {client_id}")
+        await websocket.send_text("Failed to create agent instance")
         await websocket.close(code=500)
         return
 
@@ -147,7 +114,7 @@ async def websocket(websocket: WebSocket, client_id: str):
     try:
         while True:
             if is_disconnected:
-                logger.warning(f"连接已断开: {client_id}")
+                logger.warning(f"Connection disconnected: {client_id}")
                 break
 
             try:
@@ -157,7 +124,7 @@ async def websocket(websocket: WebSocket, client_id: str):
                 is_disconnected = True
                 break
             except Exception as e:
-                logger.error(f"接收消息错误: {str(e)}")
+                logger.error(f"Error receiving message: {str(e)}")
                 is_disconnected = True
                 break
 
@@ -166,54 +133,50 @@ async def websocket(websocket: WebSocket, client_id: str):
                 message_type = message_data.get('type', 'message')
                 content = message_data.get('content', '')
 
-                logger.info(f"收到消息 [{message_type}]: {content[:30]}...")
+                logger.info(f"receive message [{message_type}]: {content[:30]}...")
 
                 if message_type == 'cancel':
                     if hasattr(agent, 'state') and agent.state == AgentState.RUNNING:
                         agent.state = AgentState.IDLE
-                        await websocket.send_text("操作已取消")
+                        await websocket.send_text("Operation cancelled")
                     continue
 
-                # 发送处理中提示
                 await websocket.send_json({
                     "type": "processing",
-                    "content": "处理中..."
+                    "content": "Processing..."
                 })
 
-                # 执行代理并实时流式输出推理过程
-                logger.info(f"执行代理: {content[:30]}...")
+                logger.info(f"Executing agent: {content[:30]}...")
                 result = await run_agent_with_reasoning_stream(agent, content, websocket)
 
-                # 发送最终结果
-                logger.info(f"发送最终结果: 长度 {len(result)} 字符")
+                logger.info(f"Sending final result: length {len(result)} characters")
                 await websocket.send_json({
                     "type": "result",
                     "content": result
                 })
 
             except json.JSONDecodeError:
-                logger.error(f"JSON解析错误: {data}")
+                logger.error(f"JSON parse error: {data}")
                 await websocket.send_json({
                     "type": "error",
-                    "content": "消息格式错误"
+                    "content": "Invalid message format"
                 })
             except Exception as e:
-                logger.error(f"处理消息错误: {str(e)}")
                 await websocket.send_json({
                     "type": "error",
-                    "content": f"处理消息时出错: {str(e)}"
+                    "content": f"Error processing message: {str(e)}"
                 })
     except WebSocketDisconnect:
-        logger.info(f"WebSocket连接已断开: {client_id}")
+        logger.info(f"WebSocket disconnected: {client_id}")
     except Exception as e:
-        logger.error(f"WebSocket错误: {str(e)}")
+        logger.error(f"WebSocket error: {str(e)}")
     finally:
-        logger.info(f"WebSocket连接关闭: {client_id}")
+        logger.info(f"WebSocket connection closed: {client_id}")
         manager.disconnect(client_id)
 
 @app.get("/")
 async def read_root():
-    return {"status": "启动成功"}
+    return {"status": "Started successfully"}
 
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0", port=8000)

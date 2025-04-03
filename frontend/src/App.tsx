@@ -7,20 +7,18 @@ import './App.css';
 const { Header, Sider, Content } = Layout;
 const { TextArea } = Input;
 
-// 生成唯一ID
 const generateId = () => {
     return Math.random().toString(36).substring(2) + Date.now().toString(36);
 };
 
 function App() {
-    const [messages, setMessages] = useState<Array<{ type: 'user' | 'assistant', content: string }>>([]);
+    const [messages, setMessages] = useState<Array<{ type: 'user' | 'assistant' | 'agent', content: string }>>([]);
     const [inputValue, setInputValue] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
-    const [chatHistory, setChatHistory] = useState<Array<{ id: string, messages: Array<{ type: 'user' | 'assistant', content: string }> }>>([]);
+    const [chatHistory, setChatHistory] = useState<Array<{ id: string, messages: Array<{ type: 'user' | 'assistant' | 'agent', content: string }> }>>([]);
     const [currentChatId, setCurrentChatId] = useState<string>(generateId());
 
-    // 使用useRef保存clientId，确保它在组件生命周期内保持不变
     const clientIdRef = useRef(generateId());
     const socketInitializedRef = useRef(false);
 
@@ -52,14 +50,14 @@ function App() {
                             break;
                         case 'result':
                             setIsProcessing(false);
-                            setMessages(prev => [...prev, { type: 'assistant', content }]);
+                            setMessages(prev => [...prev, { type: 'agent', content }]);
                             break;
                         case 'error':
                             setIsProcessing(false);
                             message.error(content);
                             break;
                         default:
-                            if (content === '处理中...') {
+                            if (content === 'processing...') {
                                 setIsProcessing(true);
                             } else {
                                 setIsProcessing(false);
@@ -68,7 +66,7 @@ function App() {
                     }
                 } catch (e) {
                     const message = event.data;
-                    if (message === '处理中...') {
+                    if (message === 'processing...') {
                         setIsProcessing(true);
                     } else {
                         setIsProcessing(false);
@@ -79,7 +77,7 @@ function App() {
 
             ws.onclose = () => {
                 setIsConnected(false);
-                message.error('WebSocket连接已断开');
+                message.error('WebSocket Disconnected');
                 socketInitializedRef.current = false;
                 socketRef.current = null;
             };
@@ -96,26 +94,23 @@ function App() {
         };
     }, []);
 
-    // 从本地存储加载聊天历史
     const loadChatHistory = () => {
         const savedHistory = localStorage.getItem('chatHistory');
         if (savedHistory) {
             try {
                 const history = JSON.parse(savedHistory);
                 setChatHistory(history);
-                // 如果有历史记录，加载最后一个对话的消息
                 if (history.length > 0) {
                     const lastChat = history[history.length - 1];
                     setCurrentChatId(lastChat.id);
                     setMessages(lastChat.messages);
                 }
             } catch (e) {
-                console.error('加载聊天历史失败:', e);
+                console.error('Failed to load chat history:', e);
             }
         }
     };
 
-    // 保存聊天消息到历史记录
     const saveChatMessage = (type: 'user' | 'assistant', content: string) => {
         const newMessage = { type, content };
         setMessages(prev => {
@@ -134,7 +129,6 @@ function App() {
         });
     };
 
-    // 清除所有聊天历史
     const clearAllChatHistory = () => {
         setChatHistory([]);
         setMessages([]);
@@ -142,14 +136,12 @@ function App() {
         localStorage.removeItem('chatHistory');
     };
 
-    // 开始新对话
     const startNewChat = () => {
         const newChatId = generateId();
         setCurrentChatId(newChatId);
         setMessages([]);
     };
 
-    // 加载指定对话
     const loadChat = (chatId: string) => {
         const chat = chatHistory.find(c => c.id === chatId);
         if (chat) {
@@ -158,7 +150,6 @@ function App() {
         }
     };
 
-    // 在组件挂载时加载历史记录
     useEffect(() => {
         loadChatHistory();
     }, []);
@@ -179,8 +170,8 @@ function App() {
             setInputValue('');
             setIsProcessing(true);
         } catch (error) {
-            console.error('发送消息失败:', error);
-            message.error('发送消息失败，请检查网络连接');
+            console.error('Send Message Error:', error);
+            message.error('Send Message Error，Please check your network.');
         }
     };
 
@@ -190,7 +181,7 @@ function App() {
                 <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
                     <h1 style={{ fontSize: '20px', marginBottom: '16px', color: 'var(--primary-color)' }}>OpenManus</h1>
                     <Button type="primary" icon={<PlusOutlined />} onClick={startNewChat} block style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                        新对话
+                        New Chat
                     </Button>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
@@ -217,7 +208,7 @@ function App() {
                 </div>
                 <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)' }}>
                     <Button icon={<SettingOutlined />} onClick={() => clearAllChatHistory()} block style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-                        清除历史记录
+                        Clear History
                     </Button>
                 </div>
             </Sider>
@@ -226,32 +217,28 @@ function App() {
                     {isConnected && (
                         <div style={{ padding: '8px 16px', backgroundColor: 'var(--success-color)', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
                             <InfoCircleOutlined />
-                            <span>WebSocket连接已建立</span>
+                            <span>WebSocket Connected</span>
                         </div>
                     )}
                     <Content style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
                         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                             {messages.length === 0 ? (
                                 <div style={{ textAlign: 'center', padding: '48px 0' }}>
-                                    <h1 style={{ fontSize: '32px', marginBottom: '16px' }}>OpenManus Web</h1>
-                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>一个多功能智能代理，可以帮助您解决各种任务</p>
-                                    <h3 style={{ marginBottom: '16px' }}>您可以尝试：</h3>
+                                    <h1 style={{ fontSize: '32px', marginBottom: '16px' }}>OpenManus</h1>
+                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>Manus is incredible, but OpenManus can achieve any idea without an Invite Code 🛫!</p>
+                                    <h3 style={{ marginBottom: '16px' }}>You Can Try：</h3>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-                                        <div onClick={() => setPrompt('帮我写一个Python爬虫，抓取豆瓣Top250电影')} style={{ padding: '24px', backgroundColor: 'white', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.3s' }}>
+                                        <div onClick={() => setPrompt('I need a 7-day Japan itinerary for April 15-23 from Seattle, with a $2500-5000 budget for my fiancée and me. We love historical sites, hidden gems, and Japanese culture (kendo, tea ceremonies, Zen meditation). We want to see Nara\'s deer and explore cities on foot.I plan to propose during this trip and need a special location recommendation.Please provide a detailed itinerary and a simple HTML travel handbook with maps, attraction descriptions, essential Japanese phrases, and travel tips we can reference throughout our journey.')} style={{ padding: '24px', backgroundColor: 'white', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.3s' }}>
                                             <CodeOutlined style={{ fontSize: '24px', marginBottom: '16px', color: 'var(--primary-color)' }} />
-                                            <p>帮我写一个Python爬虫，抓取豆瓣Top250电影</p>
+                                            <p>7-Day Japan Itinerary with Proposal Ideas</p>
                                         </div>
-                                        <div onClick={() => setPrompt('用Python编写一个简单的贪吃蛇游戏')} style={{ padding: '24px', backgroundColor: 'white', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.3s' }}>
+                                        <div onClick={() => setPrompt('What vertical search AI solutions exist in the fashion industry? In which specific scenarios are they deployed? What are their pricing models? Which parts of the value chain do they serve? How do these products differentiate from one another?')} style={{ padding: '24px', backgroundColor: 'white', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.3s' }}>
                                             <RobotOutlined style={{ fontSize: '24px', marginBottom: '16px', color: 'var(--primary-color)' }} />
-                                            <p>用Python编写一个简单的贪吃蛇游戏</p>
+                                            <p>Vertical Search AI Solutions in Fashion Industry</p>
                                         </div>
-                                        <div onClick={() => setPrompt('帮我分析一下最近人工智能发展的趋势')} style={{ padding: '24px', backgroundColor: 'white', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.3s' }}>
+                                        <div onClick={() => setPrompt('I am a middle school physics teacher preparing to teach the law of conservation of momentum. Could you create a series of clear and accurate demonstration animations and organize them into a simple presentation html?')} style={{ padding: '24px', backgroundColor: 'white', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.3s' }}>
                                             <RiseOutlined style={{ fontSize: '24px', marginBottom: '16px', color: 'var(--primary-color)' }} />
-                                            <p>帮我分析一下最近人工智能发展的趋势</p>
-                                        </div>
-                                        <div onClick={() => setPrompt('如何使用Python处理大规模数据？')} style={{ padding: '24px', backgroundColor: 'white', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.3s' }}>
-                                            <DatabaseOutlined style={{ fontSize: '24px', marginBottom: '16px', color: 'var(--primary-color)' }} />
-                                            <p>如何使用Python处理大规模数据？</p>
+                                            <p>Conservation of Momentum Teaching Animations and Presentation</p>
                                         </div>
                                     </div>
                                 </div>
@@ -291,7 +278,7 @@ function App() {
                                                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                                                 }}
                                             >
-                                                处理中...
+                                                processing...
                                             </div>
                                         </div>
                                     )}
@@ -305,7 +292,7 @@ function App() {
                                 <TextArea
                                     value={inputValue}
                                     onChange={(e) => setInputValue(e.target.value)}
-                                    placeholder="输入消息..."
+                                    placeholder="Enter Message..."
                                     autoSize={{ minRows: 1, maxRows: 6 }}
                                     onPressEnter={(e) => {
                                         if (!e.shiftKey) {
@@ -321,14 +308,14 @@ function App() {
                                     disabled={!isConnected || isProcessing || !inputValue.trim()}
                                     style={{ borderRadius: '8px' }}
                                 >
-                                    发送
+                                    Send
                                 </Button>
                             </div>
                         </div>
                     </div>
                 </div>
-            </Layout>
-        </Layout>
+            </Layout >
+        </Layout >
     )
 }
 
