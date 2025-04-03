@@ -97,7 +97,7 @@ async def run_agent_with_reasoning_stream(agent: Manus, content: str, websocket:
     finally:
         agent.step = original_step_method
 
-@app.websocket("/ws/chat/{client_id}")
+@app.websocket("/websocket/{client_id}")
 async def websocket(websocket: WebSocket, client_id: str):
     await websocket.accept()
     logger.info(f"WebSocket connected: {client_id}")

@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { PlusOutlined, SettingOutlined, InfoCircleOutlined, CodeOutlined, RobotOutlined, RiseOutlined, DatabaseOutlined } from '@ant-design/icons';
 import './App.css';
 
-const { Header, Sider, Content } = Layout;
+const { Sider, Content } = Layout;
 const { TextArea } = Input;
 
 const generateId = () => {
@@ -12,24 +12,25 @@ const generateId = () => {
 };
 
 function App() {
-    const [messages, setMessages] = useState<Array<{ type: 'user' | 'assistant' | 'agent', content: string }>>([]);
+    const [messages, setMessages] = useState<Array<{ type: 'user' | 'assistant', content: string }>>([]);
     const [inputValue, setInputValue] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
-    const [chatHistory, setChatHistory] = useState<Array<{ id: string, messages: Array<{ type: 'user' | 'assistant' | 'agent', content: string }> }>>([]);
+    const [chatHistory, setChatHistory] = useState<Array<{ id: string, messages: Array<{ type: 'user' | 'assistant', content: string }> }>>([]);
     const [currentChatId, setCurrentChatId] = useState<string>(generateId());
 
     const clientIdRef = useRef(generateId());
     const socketInitializedRef = useRef(false);
 
     const socketRef = useRef<WebSocket | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (socketInitializedRef.current) return;
 
         const connectWebSocket = () => {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//localhost:8000/ws/chat/${clientIdRef.current}`;
+            const wsUrl = `${protocol}//localhost:8000/websocket/${clientIdRef.current}`;
 
             const ws = new WebSocket(wsUrl);
 
@@ -50,7 +51,8 @@ function App() {
                             break;
                         case 'result':
                             setIsProcessing(false);
-                            setMessages(prev => [...prev, { type: 'agent', content }]);
+                            setMessages(prev => [...prev, { type: 'assistant', content }]);
+                            saveChatMessage('assistant', content)
                             break;
                         case 'error':
                             setIsProcessing(false);
@@ -154,6 +156,10 @@ function App() {
         loadChatHistory();
     }, []);
 
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
     const setPrompt = (prompt: string) => {
         setInputValue(prompt);
     };
@@ -179,7 +185,7 @@ function App() {
         <Layout style={{ height: '100vh' }}>
             <Sider width={260} style={{ backgroundColor: 'var(--sidebar-color)', borderRight: '1px solid var(--border-color)' }}>
                 <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
-                    <h1 style={{ fontSize: '20px', marginBottom: '16px', color: 'var(--primary-color)' }}>OpenManus</h1>
+                    <h1 style={{ fontSize: '20px', marginBottom: '16px', textAlign: 'center' }}>OpenManus</h1>
                     <Button type="primary" icon={<PlusOutlined />} onClick={startNewChat} block style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                         New Chat
                     </Button>
@@ -198,10 +204,11 @@ function App() {
                                     color: currentChatId === chat.id ? 'white' : 'var(--text-color)',
                                     cursor: 'pointer',
                                     marginBottom: '8px',
-                                    transition: 'all 0.3s'
+                                    transition: 'all 0.3s',
+                                    textAlign: 'left'
                                 }}
                             >
-                                {firstMessage ? firstMessage.content.substring(0, 30) + (firstMessage.content.length > 30 ? '...' : '') : '新对话'}
+                                {firstMessage ? firstMessage.content.substring(0, 30) + (firstMessage.content.length > 30 ? '...' : '') : 'New Chat'}
                             </div>
                         );
                     })}
@@ -282,6 +289,7 @@ function App() {
                                             </div>
                                         </div>
                                     )}
+                                    <div ref={messagesEndRef} />
                                 </>
                             )}
                         </div>

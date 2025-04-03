@@ -2,6 +2,19 @@
   <img src="assets/logo.jpg" width="200"/>
 </p>
 
+## 启动后端
+```bash
+pip install -r requirements.txt
+python ws_server.py
+```
+
+## 启动前端
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
 English | [中文](README_zh.md) | [한국어](README_ko.md) | [日本語](README_ja.md)
 
 [![GitHub stars](https://img.shields.io/github/stars/mannaandpoem/OpenManus?style=social)](https://github.com/mannaandpoem/OpenManus/stargazers)
