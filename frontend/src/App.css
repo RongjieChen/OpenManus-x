@@ -1,0 +1,127 @@
+:root {
+    --primary-color: #1a73e8;
+    --secondary-color: #5f6368;
+    --background-color: #f8f9fa;
+    --sidebar-color: #f0f2f5;
+    --user-message-color: #f1f5f9;
+    --bot-message-color: #ffffff;
+    --hover-color: #e8eaed;
+    --border-color: #dadce0;
+    --text-color: #202124;
+    --text-secondary: #5f6368;
+    --error-color: #d93025;
+    --success-color: #0f9d58;
+    --info-color: #1a73e8;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+    width: 260px;
+    background-color: var(--sidebar-color);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color);
+}
+
+.sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-header h1 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: var(--primary-color);
+}
+
+/* 主要内容区域 */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: var(--background-color);
+}
+
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.message {
+    margin-bottom: 16px;
+    max-width: 70%;
+    display: flex;
+    flex-direction: column;
+}
+
+.message.user {
+    align-self: flex-end;
+}
+
+.message.user .message-content {
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 12px;
+    border-top-right-radius: 2px;
+    padding: 12px 16px;
+}
+
+.message.assistant {
+    align-self: flex-start;
+}
+
+.message.assistant .message-content {
+    background-color: var(--bot-message-color);
+    color: var(--text-color);
+    border-radius: 12px;
+    border-top-left-radius: 2px;
+    padding: 12px 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.input-container {
+    margin-top: 16px;
+    padding: 16px;
+    background-color: var(--bot-message-color);
+    border-top: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: var(--bot-message-color);
+    border-radius: 8px;
+    width: fit-content;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
